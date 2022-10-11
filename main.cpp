@@ -3,6 +3,7 @@
 #include <vector>
 #include <list>
 #include <stack>
+#include <algorithm>
 
 void print_graph(const std::vector<std::list<int>> &graph) {
     for(int i = 0; i < graph.size(); i++) {
@@ -36,19 +37,22 @@ void readData(int &crossings, int &streets, std::vector<std::list<int>> &graph) 
 //    print_graph(graph);
 }
 
-void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &components, std::vector<std::list<int>> &graph, std::vector<bool> &inStack, std::vector<int> &index, std::vector<std::list<int>> &sccLists,int counter = 0) {
+int counter = 0;
+
+void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &components, std::vector<std::list<int>> &graph, std::vector<bool> &inStack, std::vector<int> &index, std::vector<std::list<int>> &sccLists) {
+    counter++;
     lowlinks[crossing] = counter;
     index[crossing] = counter;
-    counter++;
 
     components.push(crossing);
     inStack[crossing] = true;
 
     for(const auto &node: graph[crossing]) {
         if(index[node] == 0) {
-            findSCC(node, lowlinks, components, graph, inStack, index, sccLists,counter);
+            findSCC(node, lowlinks, components, graph, inStack, index, sccLists);
             if(lowlinks[node] < lowlinks[crossing])
                 lowlinks[crossing] = lowlinks[node];
+
         }
 
         else if(inStack[node]) {
@@ -73,9 +77,30 @@ void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &componen
 
 }
 
-void filterWeekCrossings(std::vector<std::list<int>> sccLists) {
-
-}
+//void filterWeekCrossings(std::vector<std::list<int>> &sccLists, const std::vector<std::list<int>> &graph) {
+//    for(auto &component: sccLists) {
+//        auto it = component.begin();
+//
+//        while (!component.empty()) {
+//            int crossing = *it;
+//            if(!graph[crossing].empty()) {
+//                for(const int node: graph[crossing]) {
+//                    auto pok = std::find(component.begin(), component.end(), node);
+//                    if (pok == component.end()) {
+//                        auto pom = it;
+//                        it--;
+//                        component.erase(pom);
+//                        int f = 5;
+//                        break;
+//                    }
+//                }
+//            }
+//            it++;
+//            if(it == component.end())
+//                break;
+//        }
+//    }
+//}
 
 void solution() {
     int crossings, streets;
@@ -95,11 +120,12 @@ void solution() {
         findSCC(i, lowlinks, components, graph, inStack, index, sccLists);
     }
 
-//    print_scc(sccLists);
+    print_scc(sccLists);
 
+    printf("\n------------------\n");
+    filterWeekCrossings(sccLists, graph);
 
-
-
+    print_scc(sccLists);
 
 }
 
