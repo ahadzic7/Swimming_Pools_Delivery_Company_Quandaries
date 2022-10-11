@@ -37,9 +37,12 @@ void readData(int &crossings, int &streets, std::vector<std::list<int>> &graph) 
 //    print_graph(graph);
 }
 
+//----------------------------------------------------GLOBAL VARIABLES--------------------------------------------------
 int counter = 0;
+//----------------------------------------------------GLOBAL VARIABLES--------------------------------------------------
 
-void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &components, std::vector<std::list<int>> &graph, std::vector<bool> &inStack, std::vector<int> &index, std::vector<std::list<int>> &sccLists) {
+
+void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &components, std::vector<std::list<int>> &graph, std::vector<bool> &inStack, std::vector<int> &index, std::vector<std::list<int>> &sccLists, std::vector<int> &scc) {
     counter++;
     lowlinks[crossing] = counter;
     index[crossing] = counter;
@@ -49,7 +52,7 @@ void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &componen
 
     for(const auto &node: graph[crossing]) {
         if(index[node] == 0) {
-            findSCC(node, lowlinks, components, graph, inStack, index, sccLists);
+            findSCC(node, lowlinks, components, graph, inStack, index, sccLists, scc);
             if(lowlinks[node] < lowlinks[crossing])
                 lowlinks[crossing] = lowlinks[node];
 
@@ -69,6 +72,7 @@ void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &componen
             node = components.top();
             components.pop();
             component.push_back(node);
+            scc[node] = sccLists.size();
             inStack[node] = false;
         } while (node != crossing);
 
@@ -77,30 +81,27 @@ void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &componen
 
 }
 
-//void filterWeekCrossings(std::vector<std::list<int>> &sccLists, const std::vector<std::list<int>> &graph) {
-//    for(auto &component: sccLists) {
-//        auto it = component.begin();
-//
-//        while (!component.empty()) {
-//            int crossing = *it;
-//            if(!graph[crossing].empty()) {
-//                for(const int node: graph[crossing]) {
-//                    auto pok = std::find(component.begin(), component.end(), node);
-//                    if (pok == component.end()) {
-//                        auto pom = it;
-//                        it--;
-//                        component.erase(pom);
-//                        int f = 5;
-//                        break;
-//                    }
-//                }
-//            }
-//            it++;
-//            if(it == component.end())
-//                break;
-//        }
-//    }
-//}
+void filterWeakCrossings(std::vector<std::list<int>> &sccLists, const std::vector<std::list<int>> &graph, std::vector<int> &scc) {
+    for(auto &component: sccLists) {
+        auto it = component.begin();
+        while(it != component.end()) {
+            int crossing = *it;
+            if(!graph[crossing].empty()) {
+                for(const auto &node: graph[crossing]) {
+                    if(scc[crossing] != scc[node]) {
+                        auto p = it;
+                        it--;
+                        component.erase(p);
+                        break;
+                    }
+                }
+            }
+            it++;
+            if(component.empty())
+                break;
+        }
+    }
+}
 
 void solution() {
     int crossings, streets;
@@ -113,19 +114,20 @@ void solution() {
     std::vector<int> lowlinks(crossings, -1);
     std::vector<int> index(crossings, 0);
     std::vector<std::list<int>> sccLists;
+    std::vector<int> scc(crossings);
 
 
     for(int i = 0; i < crossings; i++) {
         if(index[i] == 0)
-        findSCC(i, lowlinks, components, graph, inStack, index, sccLists);
+        findSCC(i, lowlinks, components, graph, inStack, index, sccLists, scc);
     }
 
-    print_scc(sccLists);
+//    print_scc(sccLists);
 
-    printf("\n------------------\n");
-    filterWeekCrossings(sccLists, graph);
+    printf("------------------\n");
+    filterWeakCrossings(sccLists, graph, scc);
 
-    print_scc(sccLists);
+//    print_scc(sccLists);
 
 }
 
