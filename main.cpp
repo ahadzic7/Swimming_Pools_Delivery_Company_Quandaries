@@ -103,15 +103,34 @@ void findSCC(int crossing, std::vector<int> &lowlinks, std::stack<int> &componen
 
 
 void filterWeakCrossings(std::vector<std::list<int>> &sccLists, const std::vector<std::list<int>> &graph, std::vector<int> &scc, std::vector<bool> &weakCrossings) {
-    for(auto &component: sccLists) {
-        for(const auto crossing: component) {
+    auto sccIt = sccLists.begin();
+    while (!sccLists.empty()) {
+        auto it = sccIt->begin();
+
+        while (!sccIt->empty()) {
+            int crossing = *it;
             for (const auto &node: graph[crossing]) {
                 if (scc[crossing] != scc[node]) {
                     weakCrossings[crossing] = true;
+                    auto p = it;
+                    it--;
+                    sccIt->erase(p);
                     break;
                 }
             }
+            it++;
+            if (it == sccIt->end())
+                break;
         }
+
+        if(sccIt->empty()) {
+            sccLists.erase(sccIt);
+            sccIt--;
+        }
+
+        sccIt++;
+        if(sccIt == sccLists.end())
+            break;
     }
 }
 
@@ -128,48 +147,50 @@ void getCostVariance(const int crossings, const std::list<int> &component, const
     std::queue<int> toVisit;
     std::vector<std::list<std::pair<int, int>>> componentGraph(crossings);
 
-    for(const auto crossing: component) {
-        int targets = 0;
-        std::vector<bool> visited(crossings, false);
-
-        toVisit.push(crossing);
-
-
-        int iteration = 0;
-
-        while (!toVisit.empty()) {
-            int cross = toVisit.front();
-
-
-
-            toVisit.pop();
-
-            iteration++;
-
-
-            if(weakCrossings[cross]) {
-                visited[cross] = true;
-                continue;
-            }
-
-            if(!visited[cross]) {
-                visited[cross]  = true;
-                for(const auto node: graph[cross]) {
-                    if(!visited[node] && !weakCrossings[node] && crossing != node) {
-                        targets++;
-                        componentGraph[crossing].emplace_back(node, iteration);
-                        toVisit.push(node);
-                    }
-                }
-
-            }
-        }
-        int x = 0;
-    }
+//    for(const auto crossing: component) {
+//        int targets = 0;
+//        std::vector<bool> visited(crossings, false);
+//
+//        toVisit.push(crossing);
+//
+//
+//        int iteration = 0;
+//
+//        while (!toVisit.empty()) {
+//            int cross = toVisit.front();
+//
+//
+//
+//            toVisit.pop();
+//
+//            iteration++;
+//
+//
+//            if(weakCrossings[cross]) {
+//                visited[cross] = true;
+//                continue;
+//            }
+//
+//            if(!visited[cross]) {
+//                visited[cross]  = true;
+//                for(const auto node: graph[cross]) {
+//                    if(!visited[node] && !weakCrossings[node] && crossing != node) {
+//                        targets++;
+//                        componentGraph[crossing].emplace_back(node, iteration);
+//                        toVisit.push(node);
+//                    }
+//                }
+//
+//            }
+//        }
+//        int x = 0;
+//    }
 
 //    print_components_graph(componentGraph);
 
     std::vector<std::vector<int>> costs(crossings, std::vector<int>(2, 0));
+
+
 
 //    for(const auto crossing: component) {
 //        for(const auto &strongLink: componentGraph[crossing]) {
