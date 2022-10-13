@@ -35,18 +35,63 @@ void print_scc(std::vector<std::list<int>> scc, std::vector<bool> weakCrossings)
             printf("%d ", el);
         printf("\n");
     }
-    printf("\n\n Variance is %d\n ", max - 1);
+    printf("------------------\n");
+    printf("\n\nVariance is %d\n\n", max - 1);
+    printf("------------------\n");
 }
 
-void print_cost_variance(std::vector<std::vector<int>> costVariance) {
-    for(int i = 0; i < costVariance.size(); i++) {
-        if(costVariance[i][1] != -1)
-            printf("%d: c = %d v = %d", i, costVariance[i][0], costVariance[i][1]);
-        printf("\n");
+void check_components_sort(std::vector<std::list<int>> sccLists, std::vector<int> scc) {
+    std::vector<std::vector<int>> x(sccLists.size()+1, std::vector<int>());
+    for(int i = 0; i < scc.size(); i++) {
+        if(scc[i] != -1) {
+            x[scc[i]].push_back(i);
+        }
+
     }
-}
 
-void print_weakCrossings() {}
+    for(int i = 0; i < x.size(); i++) {
+        if(x[i].empty()) {
+            x.erase(x.begin() + i);
+            i--;
+            continue;
+        }
+        std::sort(x[i].begin(), x[i].end());
+    }
+    for(int i = 0; i < sccLists.size(); i++) {
+
+        if(sccLists[i].empty()) {
+            sccLists.erase(sccLists.begin() + i);
+            i--;
+            continue;
+        }
+        sccLists[i].sort();
+        std::sort(x[i].begin(), x[i].end());
+    }
+
+//    printf("###############################");
+//    for(auto row: x) {
+//        for(auto el: row) {
+//            printf("%d ", el);
+//        }
+//        printf("\n");
+//    }
+
+    printf("###############################\n");
+
+    for(int i = 0; i < sccLists.size(); i++) {
+        bool found = false;
+        for(int j = 0; j < x.size(); j++){
+            if(std::equal(sccLists[i].begin(), sccLists[i].end(), x[j].begin())) {
+                found = true;
+                break;
+            }
+        }
+        if(!found)
+            printf("Ne valja %d\n", i);
+    }
+    printf("###############################\n");
+
+}
 
 void readData(int &crossings, int &streets, std::vector<std::list<int>> &graph) {
     scanf("%d %d", &crossings, &streets);
@@ -197,44 +242,44 @@ void getCostVariance(const int crossings, const std::list<int> &component, const
     std::queue<int> toVisit;
     std::vector<std::list<std::pair<int, int>>> componentGraph(crossings);
 
-//    for(const auto crossing: component) {
-//        int targets = 0;
-//        std::vector<bool> visited(crossings, false);
-//
-//        toVisit.push(crossing);
-//
-//
-//        int iteration = 0;
-//
-//        while (!toVisit.empty()) {
-//            int cross = toVisit.front();
-//
-//
-//
-//            toVisit.pop();
-//
-//            iteration++;
-//
-//
-//            if(weakCrossings[cross]) {
-//                visited[cross] = true;
-//                continue;
-//            }
-//
-//            if(!visited[cross]) {
-//                visited[cross]  = true;
-//                for(const auto node: graph[cross]) {
-//                    if(!visited[node] && !weakCrossings[node] && crossing != node) {
-//                        targets++;
-//                        componentGraph[crossing].emplace_back(node, iteration);
-//                        toVisit.push(node);
-//                    }
-//                }
-//
-//            }
-//        }
-//        int x = 0;
-//    }
+    for(const auto crossing: component) {
+        int targets = 0;
+        std::vector<bool> visited(crossings, false);
+
+        toVisit.push(crossing);
+
+
+        int iteration = 0;
+
+        while (!toVisit.empty()) {
+            int cross = toVisit.front();
+
+
+
+            toVisit.pop();
+
+            iteration++;
+
+
+            if(weakCrossings[cross]) {
+                visited[cross] = true;
+                continue;
+            }
+
+            if(!visited[cross]) {
+                visited[cross]  = true;
+                for(const auto node: graph[cross]) {
+                    if(!visited[node] && !weakCrossings[node] && crossing != node) {
+                        targets++;
+                        componentGraph[crossing].emplace_back(node, iteration);
+                        toVisit.push(node);
+                    }
+                }
+
+            }
+        }
+        int x = 0;
+    }
 
 //    print_components_graph(componentGraph);
 
@@ -263,6 +308,8 @@ void getCostVariance(const int crossings, const std::list<int> &component, const
 
 
 
+
+
 void solution() {
     int crossings, streets;
     std::vector<std::list<int>> graph(0);
@@ -288,13 +335,13 @@ void solution() {
     std::vector<bool> weakComponents(sccLists.size(), false);
 
 //    print_scc(sccLists, weakCrossings);
-//    printf("------------------\n");
-
 
     filterWeakCrossings(sccLists, graph, scc, weakComponents, weakCrossings);
 
 //    print_scc(sccLists, weakComponents);
-//    printf("------------------\n");
+
+
+    int maxVariance = sccLists[0].size();
 
     for(int i = 0; i < sccLists.size(); i++) {
         if(!sccLists[i].empty() && weakComponents[i]) {
@@ -310,13 +357,13 @@ void solution() {
                     findSCC2(el, lowlinks2, components2, graph, inStack2, index2, sccLists2, weakCrossings);
             }
 
-            if(sccLists2.empty())
+            if(sccLists2.empty()) {
                 sccLists.erase(sccLists.begin() + i);
+            }
             else if(sccLists2.size() == 1)
                 sccLists[i] = std::move(sccLists2[0]);
             else {
                 //need to update scc
-
                 for(const auto originalCrossing: sccLists[i]) {
                     auto it = std::find(sccLists2[0].begin(), sccLists2[0].end(), originalCrossing);
                     if(it == sccLists2[0].end()) {
@@ -334,16 +381,19 @@ void solution() {
                 }
             }
         }
+
+        if(maxVariance < sccLists[i].size())
+            maxVariance = sccLists[i].size();
     }
 
-    print_scc(sccLists, weakCrossings);
+//    print_scc(sccLists, weakCrossings);
+//    check_components_sort(sccLists, scc);
 
-
-    printf("******************\n\nX: weak Crosing X -> ");
-    for(int i = 0; i < scc.size(); i++) {
-        if(scc[i] == 5) printf("%d ", i);
+    for(const auto &component : sccLists) {
+        if(component.size() == maxVariance)
+            getCostVariance(crossings, component, graph, weakCrossings, costVariance);
     }
-    printf("\n\n******************\n");
+
 
 }
 
