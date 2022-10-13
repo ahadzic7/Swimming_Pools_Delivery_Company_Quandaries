@@ -229,80 +229,56 @@ void findSCC2(int crossing, std::vector<int> &lowlinks, std::stack<int> &compone
 
 
 
-void getCostVariance(const int crossings, const std::list<int> &component, const std::vector<std::list<int>> &graph, const std::vector<bool> &weakCrossings, std::vector<std::vector<int>> &costVariance) {
-    if(component.size() == 1) {
-        int crossing = *component.begin();
-        if(!weakCrossings[crossing]) {
-            costVariance[crossing][0] = 0;
-            costVariance[crossing][1] = 0;
-        }
-        return;
-    }
-
+int getCost(const int crossings, const std::list<int> &component, const std::vector<std::list<int>> &graph, const std::vector<int> &scc, std::vector<bool> &weakCrossings) {
     std::queue<int> toVisit;
-    std::vector<std::list<std::pair<int, int>>> componentGraph(crossings);
+    std::vector<std::vector<int>> costs(crossings, std::vector<int>(crossings, 10e8));
+
+    std::vector<std::vector<int>> costsOfCrossings(crossings, std::vector<int>(2, 0));
 
     for(const auto crossing: component) {
-        int targets = 0;
         std::vector<bool> visited(crossings, false);
-
+        std::list<int> cache;
         toVisit.push(crossing);
-
+        costs[crossing][crossing] = 0;
 
         int iteration = 0;
 
         while (!toVisit.empty()) {
             int cross = toVisit.front();
-
-
-
             toVisit.pop();
-
             iteration++;
-
-
-            if(weakCrossings[cross]) {
-                visited[cross] = true;
-                continue;
-            }
 
             if(!visited[cross]) {
                 visited[cross]  = true;
                 for(const auto node: graph[cross]) {
-                    if(!visited[node] && !weakCrossings[node] && crossing != node) {
-                        targets++;
-                        componentGraph[crossing].emplace_back(node, iteration);
-                        toVisit.push(node);
+                    if(node == crossing || weakCrossings[node] != weakCrossings[crossing])
+                        continue;
+                    if(costs[crossing][node] > costs[crossing][cross] + 1) {
+                        costs[crossing][node] = costs[crossing][cross] + 1;
+                        cache.emplace_back(node);
                     }
+                    toVisit.push(node);
                 }
 
             }
         }
-        int x = 0;
+
+        for(auto node: cache) {
+            costsOfCrossings[crossing][0] += costs[crossing][node];
+            costsOfCrossings[node][1] +=  costs[crossing][node];
+        }
     }
 
-//    print_components_graph(componentGraph);
+    int minCost = costsOfCrossings[*component.begin()][0] * 2 + costsOfCrossings[*component.begin()][1];
+    for(const auto &crossing: component) {
+        if(minCost > costsOfCrossings[crossing][0] * 2 + costsOfCrossings[crossing][1])
+            minCost = costsOfCrossings[crossing][0] * 2 + costsOfCrossings[crossing][1];
+    }
 
-    std::vector<std::vector<int>> costs(crossings, std::vector<int>(2, 0));
 
+//    printf("%d\n", minCost);
 
-
-//    for(const auto crossing: component) {
-//        for(const auto &strongLink: componentGraph[crossing]) {
-//            costs[crossing][0] += strongLink.second;
-//            costs[strongLink.first][1] += strongLink.second;
-//        }
-//    }
-
-    int i = 0;
-//    for(auto row: costs) {
-//        printf("%d: ", i);
-//        for(auto el: row)
-//            printf("%d ", el);
-//        printf("\n");
-//        i++;
-//    }
-
+    return minCost;
 
 }
 
@@ -330,7 +306,6 @@ void solution() {
     }
 //    print_scc(sccLists);
 
-    std::vector<std::vector<int>> costVariance(crossings, std::vector<int>(2, -1));
     std::vector<bool> weakCrossings(crossings, false);
     std::vector<bool> weakComponents(sccLists.size(), false);
 
@@ -389,11 +364,19 @@ void solution() {
 //    print_scc(sccLists, weakCrossings);
 //    check_components_sort(sccLists, scc);
 
+    std::list<int> costs;
     for(const auto &component : sccLists) {
         if(component.size() == maxVariance)
-            getCostVariance(crossings, component, graph, weakCrossings, costVariance);
+            costs.push_back(getCost(crossings, component, graph, scc, weakCrossings));
     }
 
+    auto minIt = std::min_element(costs.begin(), costs.end());
+    int minCost = *minIt;
+    int potentialCrossings = std::count_if(costs.begin(), costs.end(), [minCost] (int x) {return x == minCost; });
+
+    printf("\n\nPotential crossings %d\n", potentialCrossings);
+    printf("Max variability is %d\n", maxVariance - 1);
+    printf("Min cost is %d\n\n", minCost);
 
 }
 
