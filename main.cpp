@@ -227,14 +227,44 @@ void findSCC2(int crossing, std::vector<int> &lowlinks, std::stack<int> &compone
 
 }
 
+void filter(std::vector<std::list<int>> &sccLists, const std::vector<std::list<int>> &graph, std::vector<int> &scc, std::vector<bool> &weakComponents, std::vector<bool> &weakCrossings) {
+    for(int i = 0; i < graph.size(); i++){
+        for(const auto &node: graph[i]) {
+            if(scc[i] != scc[node]) {
+                weakCrossings[i] = true;
+                weakComponents[scc[i]] = true;
+            }
+        }
+    }
+
+    int i = 0;
+//    for(auto &component: sccLists) {
+//        std::list<int> cache;
+//        for(const auto &cross: component) {
+//            for(const auto &node: graph[cross]) {
+//                if(scc[cross] != scc[node]) {
+//                    weakCrossings[cross] = true;
+//                    weakComponents[i] = true;
+//                    cache.push_back(cross);
+//                }
+//            }
+//        }
+//        for(auto cross: cache) {
+////            component.remove(cross);
+//            scc[cross] = -1;
+//        }
+//        i++;
+//    }
+}
 
 
-
-void getCost(const int crossings, const std::list<int> &component, const std::vector<std::list<int>> &graph, const std::vector<int> &scc, int &minCost, int &potentialCrossings) {
+void getCost(const int crossings, const std::list<int> &component, const std::vector<std::list<int>> &graph, const std::vector<int> &scc, std::vector<bool> &weakCrossings, int &minCost, int &potentialCrossings) {
     std::queue<int> toVisit;
     std::vector<std::vector<int>> costsOfCrossings(crossings, std::vector<int>(2, 0));
 
     for(const auto crossing: component) {
+        if(weakCrossings[crossing])
+            continue;
         std::vector<bool> visited(crossings, false);
         std::list<int> cache;
         toVisit.push(crossing);
@@ -251,11 +281,14 @@ void getCost(const int crossings, const std::list<int> &component, const std::ve
                 for(const auto node: graph[cross]) {
                     if(node == crossing || scc[node] != scc[crossing])
                         continue;
+                    if(weakCrossings[node])
+                        continue;
+
                     if(costs[node] > costs[cross] + 1) {
                         costs[node] = costs[cross] + 1;
                         cache.emplace_back(node);
                     }
-                    toVisit.push(node);
+                        toVisit.push(node);
                 }
             }
         }
@@ -268,12 +301,12 @@ void getCost(const int crossings, const std::list<int> &component, const std::ve
 
     minCost = costsOfCrossings[*component.begin()][0] * 2 + costsOfCrossings[*component.begin()][1];
     for(const auto &crossing: component) {
-        if(minCost > costsOfCrossings[crossing][0] * 2 + costsOfCrossings[crossing][1])
+        if(!weakCrossings[crossing] && minCost > costsOfCrossings[crossing][0] * 2 + costsOfCrossings[crossing][1])
             minCost = costsOfCrossings[crossing][0] * 2 + costsOfCrossings[crossing][1];
     }
     int count = 0;
     for(const auto &crossing: component) {
-        if(minCost == costsOfCrossings[crossing][0] * 2 + costsOfCrossings[crossing][1])
+        if(!weakCrossings[crossing] && minCost == costsOfCrossings[crossing][0] * 2 + costsOfCrossings[crossing][1])
             count++;
     }
     potentialCrossings = count;
@@ -316,32 +349,37 @@ void solution() {
 
 //    print_scc(sccLists, weakCrossings);
 
-    filterWeakCrossings(sccLists, graph, scc, weakComponents, weakCrossings);
-
+    filter(sccLists, graph, scc, weakComponents, weakCrossings);
 //    print_scc(sccLists, weakComponents);
 
-    int maxVariance = sccLists[0].size();
+    std::stack<int> components2;
+    std::vector<bool> inStack2(crossings, false);
+    std::vector<int> lowlinks2(crossings, -1);
+    std::vector<int> index2(crossings, 0);
 
     for(int i = 0; i < sccLists.size(); i++) {
+
         if(!sccLists[i].empty() && weakComponents[i]) {
             //repeat tarjan
-            std::stack<int> components2;
-            std::vector<bool> inStack2(crossings, false);
-            std::vector<int> lowlinks2(crossings, -1);
-            std::vector<int> index2(crossings, 0);
+            bool del = true;
             std::vector<std::list<int>> sccLists2;
 
             for(const auto &el: sccLists[i]) {
-                if(!index2[el])
-                    findSCC2(el, lowlinks2, components2, graph, inStack2, index2, sccLists2, weakCrossings);
+                if(!weakCrossings[el]){
+                    if (index2[el] == 0)
+                        findSCC2(el, lowlinks2, components2, graph, inStack2, index2, sccLists2, weakCrossings);
+                    else
+                        del = false;
+                }
             }
 
-            if(sccLists2.empty()) {
+            if(sccLists2.empty() && del) {
                 sccLists.erase(sccLists.begin() + i);
+                i--;
             }
-            else if(sccLists2.size() == 1)
+            else if(sccLists2.size() == 1 )
                 sccLists[i] = std::move(sccLists2[0]);
-            else {
+            else if(!sccLists2.empty()){
                 sccLists[i] = std::move(sccLists2[0]);
                 for(int j = 1; j < sccLists2.size(); j++) {
                     sccLists.push_back(sccLists2[j]);
@@ -351,21 +389,39 @@ void solution() {
                 }
             }
         }
-
-        if(maxVariance < sccLists[i].size())
-            maxVariance = sccLists[i].size();
     }
 
 //    print_scc(sccLists, weakCrossings);
 //    check_components_sort(sccLists, scc);
 
+    int maxVariance = -1;
+    bool firstVariance = true;
+    std::vector<int> maxComponent(sccLists.size(), 0);
+    int it = 0;
+    for(const auto &component: sccLists){
+        int count = 0;
+        for(const auto node: component)
+            if(!weakCrossings[node])
+                count++;
+        if(firstVariance) {
+            maxVariance = count;
+            firstVariance = false;
+        }
+        else if(maxVariance < count) {
+            maxVariance = count;
+        }
+        maxComponent[it] = count;
+        it++;
+    }
+
     std::list<std::pair<int, int>> costs;
     int minCost;
     bool first = true;
+    int itt = 0;
     for(const auto &component : sccLists) {
-        if(component.size() == maxVariance) {
+        if(maxComponent[itt] == maxVariance) {
             int cost, potentialCrossings;
-            getCost(crossings, component, graph, scc, cost, potentialCrossings);
+            getCost(crossings, component, graph, scc, weakCrossings,cost, potentialCrossings);
             if(first) {
                 minCost = cost;
                 first = false;
@@ -375,6 +431,7 @@ void solution() {
 
             costs.emplace_back(cost, potentialCrossings);
         }
+        itt++;
     }
 
 
@@ -408,7 +465,7 @@ int main() {
 
     end = clock();
 
-    printf("\n\nExecution time: %f", (end - start) / 1000.);
+//    printf("\n\nExecution time: %f", (end - start) / 1000.);
 
     return 0;
 }
